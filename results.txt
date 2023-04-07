@@ -1,0 +1,20 @@
+[+] Using com port /dev/ttyS3
+== Testvector 0
+[+] Cycle count = 79431 = 0.000635448 s
+[OK] Result correct: 45 84 22 7B 38 C1 79 55 
+
+== Testvector 1
+[+] Cycle count = 69088 = 0.000552704 s
+[OK] Result correct: 49 50 94 F5 C0 46 2C E7 
+
+== Testvector 2
+[+] Cycle count = 68433 = 0.000547464 s
+[OK] Result correct: 7B 41 68 2F C7 FF 12 A1 
+
+== Testvector 3
+[+] Cycle count = 68332 = 0.000546656 s
+[OK] Result correct: D2 10 32 21 D3 DC 33 33 
+
+== Testvector 4
+[+] Cycle count = 68332 = 0.000546656 s
+[OK] Result correct: D0 44 6A 0A C9 13 35 D4
