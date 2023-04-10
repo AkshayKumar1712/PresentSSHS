@@ -13,6 +13,18 @@ static const uint8_t sbox[16] = {
 	0xC, 0x5, 0x6, 0xB, 0x9, 0x0, 0xA, 0xD, 0x3, 0xE, 0xF, 0x8, 0x4, 0x7, 0x1, 0x2,
 };
 
+static void merge_sboxes(uint8_t sb_prime[256]){
+	int total_bytes = 16;
+	for (int i = 0; i < total_bytes; i++)
+	{
+		for (int j = 0; j < total_bytes; j++)
+		{
+			int index = total_bytes * i + j;
+			sb_prime[index] = sbox[i] << 4 | sbox[j];
+		}
+	}
+}
+
 static void sbox_layer(uint8_t s[CRYPTO_IN_SIZE])
 {
 	// INSERT YOUR CODE HERE AND DELETE THIS COMMENT
