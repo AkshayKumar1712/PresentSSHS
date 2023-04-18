@@ -29,6 +29,9 @@ static void enslice(const uint8_t pt[CRYPTO_IN_SIZE * BITSLICE_WIDTH], bs_reg_t 
 			++count;
 		else 
 			count=0;
+
+		if(i!=0 && ((i+1)%8==0))
+		 ++k;
     }
 }
 
