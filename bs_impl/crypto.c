@@ -90,7 +90,7 @@ static void unslice(const bs_reg_t state_bs[CRYPTO_IN_SIZE_BIT], uint8_t pt[CRYP
 	
 }
 
-static inline void present_sbox(bs_reg_t *Y3, bs_reg_t *Y2, bs_reg_t *Y1, bs_reg_t *Y0, const bs_reg_t X3, const bs_reg_t X2, const bs_reg_t X1, const bs_reg_t X0) 
+static inline void present_sbox(bs_reg_t *Y0, bs_reg_t *Y1, bs_reg_t *Y2, bs_reg_t *Y3, const bs_reg_t X0, const bs_reg_t X1, const bs_reg_t X2, const bs_reg_t X3) 
 {
 	*Y0 = X0 ^ (X1 & X2) ^ X2 ^ X3;
 	*Y1 = (X0 & X2 & X1) ^ (X0 & X3 & X1) ^ (X1 & X3) ^ X1 ^ (X0 & X2 & X3) ^ (X2 & X3) ^ X3;
@@ -230,5 +230,9 @@ void crypto_func(uint8_t pt[CRYPTO_IN_SIZE * BITSLICE_WIDTH], uint8_t key[CRYPTO
 
 	addRoundKey(state, key + 2);	
 	// Convert back to normal form
+
+	for(int i=0;i< 256; ++i){
+		pt[i]=0;
+	}
 	unslice(state, pt);
 }
