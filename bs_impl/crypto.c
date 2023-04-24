@@ -73,48 +73,142 @@ static void unslice(const bs_reg_t state_bs[CRYPTO_IN_SIZE_BIT], uint8_t pt[CRYP
 
 static inline void present_sbox(bs_reg_t *Y0, bs_reg_t *Y1, bs_reg_t *Y2, bs_reg_t *Y3, const bs_reg_t X0, const bs_reg_t X1, const bs_reg_t X2, const bs_reg_t X3) 
 {
-	*Y0 = X0 ^ (X1 & X2) ^ X2 ^ X3;
-	*Y1 = (X0 & X2 & X1) ^ (X0 & X3 & X1) ^ (X1 & X3) ^ X1 ^ (X0 & X2 & X3) ^ (X2 & X3) ^ X3;
-	*Y2 = (X0 & X1) ^ (X0 & X3 & X1) ^ (X1 & X3) ^ X2 ^ (X0 & X3) ^ (X0 & X2 & X3) ^ X3 ^ onesMask; // 1 should be 0xFFFFFFFF
-	*Y3 = (X1 & X2 & X0) ^ (X1 & X3 & X0) ^ (X0 & X2 & X3) ^ X0 ^ X1 ^ (X1 & X2) ^ X3 ^ onesMask;
+	// *Y0 = X0 ^ (X1 & X2) ^ X2 ^ X3;
+	// *Y1 = (X0 & X2 & X1) ^ (X0 & X3 & X1) ^ (X1 & X3) ^ X1 ^ (X0 & X2 & X3) ^ (X2 & X3) ^ X3;
+	// *Y2 = (X0 & X1) ^ (X0 & X3 & X1) ^ (X1 & X3) ^ X2 ^ (X0 & X3) ^ (X0 & X2 & X3) ^ X3 ^ onesMask; // 1 should be 0xFFFFFFFF
+	// *Y3 = (X1 & X2 & X0) ^ (X1 & X3 & X0) ^ (X0 & X2 & X3) ^ X0 ^ X1 ^ (X1 & X2) ^ X3 ^ onesMask;
+	register bs_reg_t T1,T2,T3,T4;
+	T1 = X1 ^ X2;
+	T2 = X2 & T1;
+	T3 = X3 ^ T2;
+	*Y0 = X0 ^ T3;
+	T2 = T1 & T3;
+	T1 ^= (*Y0);
+	T2 ^= X2;
+	T4 = X0 | T2;
+	*Y1 = T1 ^ T4;
+	T2 ^= (~X0);
+	*Y3 = (*Y1) ^ T2;
+	T2 |= T1;
+	*Y2 = T3 ^ T2;
 }
 
-void sBoxLayer(bs_reg_t *Y, bs_reg_t *X) {
-	// for (int i = 0; i < 64; i+=4)
-	// {
-	// 	present_sbox(Y + i, Y + (i+1), Y + (i+2), Y + (i+3), X[i], X[i+1], X[i+2], X[i+3]);
-	// }
-	
-	present_sbox(Y+ 0,Y+ 1,Y+ 2,Y+ 3, X[ 0],X[ 1],X[ 2],X[ 3]);
-	present_sbox(Y+ 4,Y+ 5,Y+ 6,Y+ 7, X[ 4],X[ 5],X[ 6],X[ 7]);
-	present_sbox(Y+ 8,Y+ 9,Y+10,Y+11, X[ 8],X[ 9],X[10],X[11]);
-	present_sbox(Y+12,Y+13,Y+14,Y+15, X[12],X[13],X[14],X[15]);
-	present_sbox(Y+16,Y+17,Y+18,Y+19, X[16],X[17],X[18],X[19]);
-
-	present_sbox(Y+20,Y+21,Y+22,Y+23, X[20],X[21],X[22],X[23]);
-	present_sbox(Y+24,Y+25,Y+26,Y+27, X[24],X[25],X[26],X[27]);
-	present_sbox(Y+28,Y+29,Y+30,Y+31, X[28],X[29],X[30],X[31]);
-	present_sbox(Y+32,Y+33,Y+34,Y+35, X[32],X[33],X[34],X[35]);
-	present_sbox(Y+36,Y+37,Y+38,Y+39, X[36],X[37],X[38],X[39]);
-
-	present_sbox(Y+40,Y+41,Y+42,Y+43, X[40],X[41],X[42],X[43]);
-	present_sbox(Y+44,Y+45,Y+46,Y+47, X[44],X[45],X[46],X[47]);
-	present_sbox(Y+48,Y+49,Y+50,Y+51, X[48],X[49],X[50],X[51]);
-	present_sbox(Y+52,Y+53,Y+54,Y+55, X[52],X[53],X[54],X[55]);
-	present_sbox(Y+56,Y+57,Y+58,Y+59, X[56],X[57],X[58],X[59]);
-
-	present_sbox(Y+60,Y+61,Y+62,Y+63, X[60],X[61],X[62],X[63]);
-}
-
-void addRoundKey(bs_reg_t *X, const uint8_t *K) {
-
-	for (int i = 0; i < 64; i++) {
-		uint8_t bitOfKey = getbit(K[i/8],i%8);
-		if(bitOfKey)
-		{
-			X[i] ^= onesMask;
-		}
+void sBoxLayer(bs_reg_t *sbox_result, bs_reg_t *state_bs) {
+	register bs_reg_t T1,T2,T3,T4;
+	for (int i = 0; i < 64; i+=4)
+	{
+		T1 = state_bs[i+1] ^ state_bs[i+2];
+		T2 = state_bs[i+2] & T1;
+		T3 = state_bs[i+3] ^ T2;
+		sbox_result[i] = state_bs[i] ^ T3;
+		T2 = T1 & T3;
+		T1 ^= (sbox_result[i]);
+		T2 ^= state_bs[i+2];
+		T4 = state_bs[i] | T2;
+		sbox_result[i+1] = T1 ^ T4;
+		T2 ^= (~state_bs[i]);
+		sbox_result[i+3] = (sbox_result[i+1]) ^ T2;
+		T2 |= T1;
+		sbox_result[i+2] = T3 ^ T2;
+		// present_sbox(sbox_result + i, sbox_result + (i+1), sbox_result + (i+2), sbox_result + (i+3), state_bs[i], state_bs[i+1], state_bs[i+2], state_bs[i+3]);
 	}
+	
+	// present_sbox(Y+ 0,Y+ 1,Y+ 2,Y+ 3, X[ 0],X[ 1],X[ 2],X[ 3]);
+	// present_sbox(Y+ 4,Y+ 5,Y+ 6,Y+ 7, X[ 4],X[ 5],X[ 6],X[ 7]);
+	// present_sbox(Y+ 8,Y+ 9,Y+10,Y+11, X[ 8],X[ 9],X[10],X[11]);
+	// present_sbox(Y+12,Y+13,Y+14,Y+15, X[12],X[13],X[14],X[15]);
+	// present_sbox(Y+16,Y+17,Y+18,Y+19, X[16],X[17],X[18],X[19]);
+
+	// present_sbox(Y+20,Y+21,Y+22,Y+23, X[20],X[21],X[22],X[23]);
+	// present_sbox(Y+24,Y+25,Y+26,Y+27, X[24],X[25],X[26],X[27]);
+	// present_sbox(Y+28,Y+29,Y+30,Y+31, X[28],X[29],X[30],X[31]);
+	// present_sbox(Y+32,Y+33,Y+34,Y+35, X[32],X[33],X[34],X[35]);
+	// present_sbox(Y+36,Y+37,Y+38,Y+39, X[36],X[37],X[38],X[39]);
+
+	// present_sbox(Y+40,Y+41,Y+42,Y+43, X[40],X[41],X[42],X[43]);
+	// present_sbox(Y+44,Y+45,Y+46,Y+47, X[44],X[45],X[46],X[47]);
+	// present_sbox(Y+48,Y+49,Y+50,Y+51, X[48],X[49],X[50],X[51]);
+	// present_sbox(Y+52,Y+53,Y+54,Y+55, X[52],X[53],X[54],X[55]);
+	// present_sbox(Y+56,Y+57,Y+58,Y+59, X[56],X[57],X[58],X[59]);
+
+	// present_sbox(Y+60,Y+61,Y+62,Y+63, X[60],X[61],X[62],X[63]);
+}
+
+void addRoundKey(bs_reg_t *state_bs, const uint8_t *key) {
+
+	// for (int i = 0; i < 64; i++) {
+	// 	uint8_t bitOfKey = getbit(K[i/8],i%8);
+	// 	// if(bitOfKey)
+	// 	// {
+	// 	// 	X[i] ^= onesMask;
+	// 	// }
+	// 	X[i] ^= onesMask & (-bitOfKey);
+	// }
+	state_bs[0] ^= onesMask & (-(key[0] >> 0 & 0x1));
+state_bs[1] ^= onesMask & (-(key[0] >> 1 & 0x1));
+state_bs[2] ^= onesMask & (-(key[0] >> 2 & 0x1));
+state_bs[3] ^= onesMask & (-(key[0] >> 3 & 0x1));
+state_bs[4] ^= onesMask & (-(key[0] >> 4 & 0x1));
+state_bs[5] ^= onesMask & (-(key[0] >> 5 & 0x1));
+state_bs[6] ^= onesMask & (-(key[0] >> 6 & 0x1));
+state_bs[7] ^= onesMask & (-(key[0] >> 7 & 0x1));
+state_bs[8] ^= onesMask & (-(key[1] >> 0 & 0x1));
+state_bs[9] ^= onesMask & (-(key[1] >> 1 & 0x1));
+state_bs[10] ^= onesMask & (-(key[1] >> 2 & 0x1));
+state_bs[11] ^= onesMask & (-(key[1] >> 3 & 0x1));
+state_bs[12] ^= onesMask & (-(key[1] >> 4 & 0x1));
+state_bs[13] ^= onesMask & (-(key[1] >> 5 & 0x1));
+state_bs[14] ^= onesMask & (-(key[1] >> 6 & 0x1));
+state_bs[15] ^= onesMask & (-(key[1] >> 7 & 0x1));
+state_bs[16] ^= onesMask & (-(key[2] >> 0 & 0x1));
+state_bs[17] ^= onesMask & (-(key[2] >> 1 & 0x1));
+state_bs[18] ^= onesMask & (-(key[2] >> 2 & 0x1));
+state_bs[19] ^= onesMask & (-(key[2] >> 3 & 0x1));
+state_bs[20] ^= onesMask & (-(key[2] >> 4 & 0x1));
+state_bs[21] ^= onesMask & (-(key[2] >> 5 & 0x1));
+state_bs[22] ^= onesMask & (-(key[2] >> 6 & 0x1));
+state_bs[23] ^= onesMask & (-(key[2] >> 7 & 0x1));
+state_bs[24] ^= onesMask & (-(key[3] >> 0 & 0x1));
+state_bs[25] ^= onesMask & (-(key[3] >> 1 & 0x1));
+state_bs[26] ^= onesMask & (-(key[3] >> 2 & 0x1));
+state_bs[27] ^= onesMask & (-(key[3] >> 3 & 0x1));
+state_bs[28] ^= onesMask & (-(key[3] >> 4 & 0x1));
+state_bs[29] ^= onesMask & (-(key[3] >> 5 & 0x1));
+state_bs[30] ^= onesMask & (-(key[3] >> 6 & 0x1));
+state_bs[31] ^= onesMask & (-(key[3] >> 7 & 0x1));
+state_bs[32] ^= onesMask & (-(key[4] >> 0 & 0x1));
+state_bs[33] ^= onesMask & (-(key[4] >> 1 & 0x1));
+state_bs[34] ^= onesMask & (-(key[4] >> 2 & 0x1));
+state_bs[35] ^= onesMask & (-(key[4] >> 3 & 0x1));
+state_bs[36] ^= onesMask & (-(key[4] >> 4 & 0x1));
+state_bs[37] ^= onesMask & (-(key[4] >> 5 & 0x1));
+state_bs[38] ^= onesMask & (-(key[4] >> 6 & 0x1));
+state_bs[39] ^= onesMask & (-(key[4] >> 7 & 0x1));
+state_bs[40] ^= onesMask & (-(key[5] >> 0 & 0x1));
+state_bs[41] ^= onesMask & (-(key[5] >> 1 & 0x1));
+state_bs[42] ^= onesMask & (-(key[5] >> 2 & 0x1));
+state_bs[43] ^= onesMask & (-(key[5] >> 3 & 0x1));
+state_bs[44] ^= onesMask & (-(key[5] >> 4 & 0x1));
+state_bs[45] ^= onesMask & (-(key[5] >> 5 & 0x1));
+state_bs[46] ^= onesMask & (-(key[5] >> 6 & 0x1));
+state_bs[47] ^= onesMask & (-(key[5] >> 7 & 0x1));
+state_bs[48] ^= onesMask & (-(key[6] >> 0 & 0x1));
+state_bs[49] ^= onesMask & (-(key[6] >> 1 & 0x1));
+state_bs[50] ^= onesMask & (-(key[6] >> 2 & 0x1));
+state_bs[51] ^= onesMask & (-(key[6] >> 3 & 0x1));
+state_bs[52] ^= onesMask & (-(key[6] >> 4 & 0x1));
+state_bs[53] ^= onesMask & (-(key[6] >> 5 & 0x1));
+state_bs[54] ^= onesMask & (-(key[6] >> 6 & 0x1));
+state_bs[55] ^= onesMask & (-(key[6] >> 7 & 0x1));
+state_bs[56] ^= onesMask & (-(key[7] >> 0 & 0x1));
+state_bs[57] ^= onesMask & (-(key[7] >> 1 & 0x1));
+state_bs[58] ^= onesMask & (-(key[7] >> 2 & 0x1));
+state_bs[59] ^= onesMask & (-(key[7] >> 3 & 0x1));
+state_bs[60] ^= onesMask & (-(key[7] >> 4 & 0x1));
+state_bs[61] ^= onesMask & (-(key[7] >> 5 & 0x1));
+state_bs[62] ^= onesMask & (-(key[7] >> 6 & 0x1));
+state_bs[63] ^= onesMask & (-(key[7] >> 7 & 0x1));
+
 }
 
 void pLayer(bs_reg_t *X, bs_reg_t *Y) {
