@@ -2,9 +2,14 @@
 
 static const bs_reg_t onesMask = 0XFFFFFFFF;
 
-static int8_t getbit(uint8_t byte, uint8_t bit)
+/**
+ * Get the bit value of byte at bit_position.
+ * @param byte Input: byte value
+ * @param bit Output: bit value
+ */
+static int8_t getbit(uint8_t byte, uint8_t bit_position)
 {
-	return byte >> bit & 0x1;
+	return byte >> bit_position & 0x1;
 }
 
 /**
@@ -14,22 +19,22 @@ static int8_t getbit(uint8_t byte, uint8_t bit)
  */
 static void enslice(const uint8_t pt[CRYPTO_IN_SIZE * BITSLICE_WIDTH], bs_reg_t state_bs[CRYPTO_IN_SIZE_BIT])
 {
-	// INSERT YOUR CODE HERE AND DELETE THIS COMMENT
 	int k = 0;
     int count=-1;
 	uint32_t bitadd;
+	// memset(state_bs, 0, CRYPTO_IN_SIZE * BITSLICE_WIDTH);
     
     for (int i = 0; i < CRYPTO_IN_SIZE * BITSLICE_WIDTH; i++) {
         // uint8_t byte = pt[i];
 		count = (count+1) % 8;
         bitadd = 0;
         for (int j = 0; j < 8; j++) {
-            if(i<8) {
-                state_bs[i * 8 + (7-j)] = getbit(pt[i],7-j) & 0x01;
-            } else {
+            // if(i<8) {
+            //     state_bs[i * 8 + (7-j)] = getbit(pt[i],7-j) & 0x01;
+            // } else {
                  bitadd = getbit(pt[i],7-j) & 0x01;
                  state_bs[count * 8 + (7-j)] = state_bs[count * 8 + (7-j)] | (bitadd<<k);
-            }
+            // }
         }
 
 		if((i+1)%8==0) {
@@ -93,7 +98,7 @@ static inline void present_sbox(bs_reg_t *Y0, bs_reg_t *Y1, bs_reg_t *Y2, bs_reg
 	*Y2 = T3 ^ T2;
 }
 
-void sBoxLayer(bs_reg_t *sbox_result, bs_reg_t *state_bs) {
+void sBoxLayer(bs_reg_t *state_bs, bs_reg_t *sbox_result) {
 	register bs_reg_t T1,T2,T3,T4;
 	for (int i = 0; i < 64; i+=4)
 	{
@@ -134,7 +139,7 @@ void sBoxLayer(bs_reg_t *sbox_result, bs_reg_t *state_bs) {
 	// present_sbox(Y+60,Y+61,Y+62,Y+63, X[60],X[61],X[62],X[63]);
 }
 
-void addRoundKey(bs_reg_t *state_bs, const uint8_t *key) {
+void addRoundKey(const uint8_t *key, bs_reg_t *state_bs) {
 
 	// for (int i = 0; i < 64; i++) {
 	// 	uint8_t bitOfKey = getbit(K[i/8],i%8);
@@ -211,7 +216,7 @@ state_bs[63] ^= onesMask & (-(key[7] >> 7 & 0x1));
 
 }
 
-void pLayer(bs_reg_t *X, bs_reg_t *Y) {
+void pLayer(bs_reg_t *Y, bs_reg_t *X) {
 	// for(int i = 0; i < 64; i++)
 	// {
 	// 	int new_position_of_the_bit = (i/4) + (i%4) * 16;
@@ -283,9 +288,9 @@ static void update_round_key(uint8_t key[CRYPTO_KEY_SIZE], const uint8_t r)
 void crypto_func(uint8_t pt[CRYPTO_IN_SIZE * BITSLICE_WIDTH], uint8_t key[CRYPTO_KEY_SIZE])
 {
 	// State buffer and additional backbuffer of same size (you can remove the backbuffer if you do not need it)
-	bs_reg_t state[CRYPTO_IN_SIZE_BIT];
-	bs_reg_t bb[CRYPTO_IN_SIZE_BIT];
-	uint8_t round;
+	bs_reg_t state[CRYPTO_IN_SIZE_BIT] = {0};
+	bs_reg_t bb[CRYPTO_IN_SIZE_BIT] = {0};
+	uint8_t round = 31;
 	
 	// for (int i = 0; i < CRYPTO_IN_SIZE_BIT; i++)
 	// {
@@ -296,19 +301,18 @@ void crypto_func(uint8_t pt[CRYPTO_IN_SIZE * BITSLICE_WIDTH], uint8_t key[CRYPTO
 	enslice(pt, state);
 	
 	// INSERT PRESENT MAIN CODE HERE AND DELETE THIS COMMENT //
-	uint8_t i = 0;
-	for(i = 1; i <= 31; i++)
+	for(uint8_t i = 1; i <= round; i++)
 	{
-		addRoundKey(state, key + 2);
-		sBoxLayer(bb, state);
-		pLayer(state, bb);
+		addRoundKey(key + 2, state);
+		sBoxLayer(state, bb);
+		pLayer(bb, state);
 		update_round_key(key, i);
 	}
 
-	addRoundKey(state, key + 2);	
+	addRoundKey(key + 2, state);	
 	// Convert back to normal form
 
-	memset(pt, 0, 256);
+	memset(pt, 0, CRYPTO_IN_SIZE * BITSLICE_WIDTH);
 
 	unslice(state, pt);
 }
