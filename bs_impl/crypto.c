@@ -56,21 +56,31 @@ static void unslice(const bs_reg_t state_bs[CRYPTO_IN_SIZE_BIT], uint8_t pt[CRYP
     }	
 }
 
-static inline void present_sbox(bs_reg_t *Y0, bs_reg_t *Y1, bs_reg_t *Y2, bs_reg_t *Y3, const bs_reg_t X0, const bs_reg_t X1, const bs_reg_t X2, const bs_reg_t X3) 
-{
-	*Y0 = X0 ^ (X1 & X2) ^ X2 ^ X3;
-	*Y1 = (X0 & X2 & X1) ^ (X0 & X3 & X1) ^ (X1 & X3) ^ X1 ^ (X0 & X2 & X3) ^ (X2 & X3) ^ X3;
-	*Y2 = (X0 & X1) ^ (X0 & X3 & X1) ^ (X1 & X3) ^ X2 ^ (X0 & X3) ^ (X0 & X2 & X3) ^ X3 ^ onesMask; // 1 should be 0xFFFFFFFF
-	*Y3 = (X1 & X2 & X0) ^ (X1 & X3 & X0) ^ (X0 & X2 & X3) ^ X0 ^ X1 ^ (X1 & X2) ^ X3 ^ onesMask;
-}
 
-void sBoxLayer(bs_reg_t *Y, bs_reg_t *X) {
+/**
+ * Perform S-Box Layer in Present Algorithm
+ * @param state_bs Input: Bitsliced state
+ * @param sbox_result Output: Output of bitsliced states after performing the S-Box
+ */
+void sBoxLayer(bs_reg_t *sbox_result, bs_reg_t *state_bs) {
+	register bs_reg_t T1,T2,T3,T4;
 	for (int i = 0; i < 64; i+=4)
 	{
-		present_sbox(Y + i, Y + (i+1), Y + (i+2), Y + (i+3), X[i], X[i+1], X[i+2], X[i+3]);
+		T1 = state_bs[i+1] ^ state_bs[i+2];
+		T2 = state_bs[i+2] & T1;
+		T3 = state_bs[i+3] ^ T2;
+		sbox_result[i] = state_bs[i] ^ T3;
+		T2 = T1 & T3;
+		T1 ^= (sbox_result[i]);
+		T2 ^= state_bs[i+2];
+		T4 = state_bs[i] | T2;
+		sbox_result[i+1] = T1 ^ T4;
+		T2 ^= (~state_bs[i]);
+		sbox_result[i+3] = (sbox_result[i+1]) ^ T2;
+		T2 |= T1;
+		sbox_result[i+2] = T3 ^ T2;
 	}
 	
-
 }
 
 /**
