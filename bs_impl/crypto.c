@@ -9,6 +9,8 @@ static int8_t getbit(uint8_t byte, uint8_t bit)
 
 
 static const bs_reg_t onesMask = 0XFFFFFFFF;
+
+
 /**
  * Bring normal buffer into bitsliced form
  * @param pt Input: state_bs in normal form
@@ -16,30 +18,17 @@ static const bs_reg_t onesMask = 0XFFFFFFFF;
  */
 static void enslice(const uint8_t pt[CRYPTO_IN_SIZE * BITSLICE_WIDTH], bs_reg_t state_bs[CRYPTO_IN_SIZE_BIT])
 {
-	// INSERT YOUR CODE HERE AND DELETE THIS COMMENT
-	int k = 0;
-    int count=0;
-    
+	int bitPositionBS = 0;
+    int bytePositionHelperBS = 0;
+	uint32_t bitValueInBitSlice;
     for (int i = 0; i < CRYPTO_IN_SIZE * BITSLICE_WIDTH; i++) {
-        uint8_t byte = pt[i];
-        uint32_t bitadd;
-        
-        for (int j = 0; j < 8; j++) {
-            if(i<8){
-                state_bs[i * 8 + (7-j)] = (byte >> (7 - j)) & 0x01;
-            } else{
-                 bitadd = (byte >> (7 - j)) & 0x01;
-                 state_bs[count * 8 + (7-j)] = state_bs[count * 8 + (7-j)] | (bitadd<<k);
-            }
- 
+		bytePositionHelperBS = i % 8;
+        bitValueInBitSlice = 0;
+        for (int j = 0; j < 8; j++) {            
+            bitValueInBitSlice = getbit(pt[i],7-j) & 0x01;
+            state_bs[bytePositionHelperBS * 8 + (7-j)] = state_bs[bytePositionHelperBS * 8 + (7-j)] | (bitValueInBitSlice<<bitPositionBS);
         }
-
-		if(count<7)
-			++count;
-		else 
-			count=0;
-		if(i!=0 && (i+1)%8==0)
-		++k;
+		bitPositionBS += (i+1) % 8 == 0;
     }
 }
 
@@ -50,30 +39,21 @@ static void enslice(const uint8_t pt[CRYPTO_IN_SIZE * BITSLICE_WIDTH], bs_reg_t 
  */
 static void unslice(const bs_reg_t state_bs[CRYPTO_IN_SIZE_BIT], uint8_t pt[CRYPTO_IN_SIZE * BITSLICE_WIDTH])
 {
-	uint32_t test=1;
+	uint32_t one=1;
     uint32_t temp[8];
-    int pos;
-    
-    int result_index=0;
-    
-    // K value depends on number of bits in each array element
+    int bitPosition = 0, result_index=0;
     for(int k=0;k<32;++k){
         for (int i = 0; i < 8; i++) {
             pt[result_index+i];
-            // printf("\n");
-            pos=0;
+            bitPosition=0;
             for (int j = 0; j < 8; j++) {
-                temp[j]=(test<<k & state_bs[(i*8) + j])>>k;
-                // printf("%u ", temp[j]);
-            
-                pt[result_index+i] = pt[result_index+i] | temp[j]<<pos;
-                ++pos;
-            
+                temp[j]=(one<<k & state_bs[(i*8) + j])>>k;
+                pt[result_index+i] = pt[result_index+i] | temp[j]<<bitPosition;
+                ++bitPosition;
             }
         }
-        result_index+=8; //change to 8 for code
-    }
-	
+        result_index+=8; 
+    }	
 }
 
 static inline void present_sbox(bs_reg_t *Y0, bs_reg_t *Y1, bs_reg_t *Y2, bs_reg_t *Y3, const bs_reg_t X0, const bs_reg_t X1, const bs_reg_t X2, const bs_reg_t X3) 
