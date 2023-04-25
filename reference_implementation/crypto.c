@@ -1,46 +1,23 @@
 #include "crypto.h"
 #include "stdio.h"
 #define CRYPTO_SIZE_IN_BITS 64
-static void add_round_key(uint8_t pt[CRYPTO_IN_SIZE], uint8_t roundkey[CRYPTO_IN_SIZE])
-{
-	// INSERT YOUR CODE HERE AND DELETE THIS COMMENT
-	for (int i = 0; i < CRYPTO_IN_SIZE; i++) {
-		pt[i] ^= roundkey[i];
-	}
-}
 
-static const uint8_t sbox[16] = {
-	0xC, 0x5, 0x6, 0xB, 0x9, 0x0, 0xA, 0xD, 0x3, 0xE, 0xF, 0x8, 0x4, 0x7, 0x1, 0x2,
-};
-
-static void merge_sboxes(uint8_t sb_prime[256]){
-	int total_bytes = 16;
-	for (int i = 0; i < total_bytes; i++)
-	{
-		for (int j = 0; j < total_bytes; j++)
-		{
-			int index = total_bytes * i + j;
-			sb_prime[index] = sbox[i] << 4 | sbox[j];
-		}
-	}
-}
-
-static void sbox_layer(uint8_t s[CRYPTO_IN_SIZE])
-{
-	// INSERT YOUR CODE HERE AND DELETE THIS COMMENT
-	// perform substitution on the state
-	for (int i = 0; i < CRYPTO_IN_SIZE; i++) {
- 		// s[i] = sbox[s[i] >> 4] << 4 | sbox[s[i] & 0x0F];
-		uint8_t ln = s[i] & 0xF;
-		uint8_t un = (s[i] >> 4) & 0xF;
-		s[i] = sbox[ln] | (sbox[un] << 4);
-	}
-}
-
+/**
+ * Get the bit value of byte at bit_position.
+ * @param byte Input: byte value
+ * @param bit Output: bit value
+ */
 static uint8_t getbit(uint8_t byte, uint8_t bit)
 {
 	return byte >> bit & 0x1;
 }
+
+/**
+ * Copy the bit value to a new position in a byte array.
+ * @param byte byte array
+ * @param new_position_of_the_bit bit position to which the bit needs to be copied
+ * @param new_bit bit value in new position
+ */
 
 static void cpybitArr(uint8_t* byte, int new_position_of_the_bit, uint8_t new_bit)
 {
@@ -50,6 +27,41 @@ static void cpybitArr(uint8_t* byte, int new_position_of_the_bit, uint8_t new_bi
 	byte[new_byte_block] |= (new_bit << bit_position_to_replace);   //set the bit
 }
 
+/**
+ * Perform RoundKey Layer in Present Algorithm
+ * @param pt Input: Plain Text
+ * @param key Input: Key to perform Add Round Key
+ */
+static void add_round_key(uint8_t pt[CRYPTO_IN_SIZE], uint8_t roundkey[CRYPTO_IN_SIZE])
+{
+	for (int i = 0; i < CRYPTO_IN_SIZE; i++) {
+		pt[i] ^= roundkey[i];
+	}
+}
+
+static const uint8_t sbox[16] = {
+	0xC, 0x5, 0x6, 0xB, 0x9, 0x0, 0xA, 0xD, 0x3, 0xE, 0xF, 0x8, 0x4, 0x7, 0x1, 0x2,
+};
+
+/**
+ * Perform S-Box Layer in Present Algorithm
+ * @param s Input: Plain text to perform sbox
+ */
+static void sbox_layer(uint8_t s[CRYPTO_IN_SIZE])
+{
+	// perform substitution on the state
+	for (int i = 0; i < CRYPTO_IN_SIZE; i++) {
+ 		s[i] = sbox[s[i] >> 4] << 4 | sbox[s[i] & 0x0F];
+		// uint8_t ln = s[i] & 0xF;
+		// uint8_t un = (s[i] >> 4) & 0xF;
+		// s[i] = sbox[ln] | (sbox[un] << 4);
+	}
+}
+
+/**
+ * Perform Permutation Layer in Present Algorithm
+ * @param s Input: Plain text to perform Permutation 
+ */
 static void pbox_layer(uint8_t s[CRYPTO_IN_SIZE])
 {
 	uint8_t t[CRYPTO_IN_SIZE];
@@ -102,10 +114,6 @@ static void update_round_key(uint8_t key[CRYPTO_KEY_SIZE], const uint8_t r)
 
 void crypto_func(uint8_t pt[CRYPTO_IN_SIZE], uint8_t key[CRYPTO_KEY_SIZE])
 {
-	//
-	// There is no need to edit this code
-	//
-	
 	uint8_t i = 0;
 	
 	for(i = 1; i <= 31; i++)
