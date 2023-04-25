@@ -34,9 +34,14 @@ static void cpybitArr(uint8_t* byte, int new_position_of_the_bit, uint8_t new_bi
  */
 static void add_round_key(uint8_t pt[CRYPTO_IN_SIZE], uint8_t roundkey[CRYPTO_IN_SIZE])
 {
-	for (int i = 0; i < CRYPTO_IN_SIZE; i++) {
-		pt[i] ^= roundkey[i];
-	}
+	pt[0] ^= roundkey[0];
+	pt[1] ^= roundkey[1];
+	pt[2] ^= roundkey[2];
+	pt[3] ^= roundkey[3];
+	pt[4] ^= roundkey[4];
+	pt[5] ^= roundkey[5];
+	pt[6] ^= roundkey[6];
+	pt[7] ^= roundkey[7];
 }
 
 static const uint8_t sbox[16] = {
@@ -57,9 +62,9 @@ static void sbox_layer(uint8_t s[CRYPTO_IN_SIZE])
 {
 	// perform substitution on the state
 	for (int i = 0; i < CRYPTO_IN_SIZE; i++) {
-		uint8_t ln = s[i] & 0xF;
-		uint8_t un = (s[i] >> 4) & 0xF;
-		s[i] = sbox[ln] | (sbox[un] << 4);
+		uint8_t lower_nibble = s[i] & 0xF;
+		uint8_t upper_nibble = (s[i] >> 4) & 0xF;
+		s[i] = sbox[lower_nibble] | (sbox[upper_nibble] << 4);
 	}
 }
 
@@ -69,18 +74,13 @@ static void sbox_layer(uint8_t s[CRYPTO_IN_SIZE])
  */
 static void pbox_layer(uint8_t s[CRYPTO_IN_SIZE])
 {
-	uint8_t t[CRYPTO_IN_SIZE];
-	for (int i = 0; i < CRYPTO_IN_SIZE; i++)
-	{
-		t[i] = s[i];
-	}
+	uint8_t temp[CRYPTO_IN_SIZE];
+	memcpy(temp, s, CRYPTO_IN_SIZE);
 	
 	uint8_t new_position_of_the_bit = 0, bit_to_be_copied = 0;
-	int old_byte_block = 0;
 	for (int i = 0; i < CRYPTO_SIZE_IN_BITS; i++)
 	{
-		old_byte_block = i/8;
-		bit_to_be_copied = getbit(t[old_byte_block], i%8);
+		bit_to_be_copied = getbit(temp[i/8], i%8);
 		new_position_of_the_bit = pLayer[i];	//precomputed the new position instead of computing it
 		cpybitArr(s, new_position_of_the_bit, bit_to_be_copied);
 	}
