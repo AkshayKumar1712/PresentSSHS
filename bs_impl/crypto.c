@@ -40,9 +40,15 @@ static void enslice(const uint8_t pt[CRYPTO_IN_SIZE * BITSLICE_WIDTH], bs_reg_t 
  */
 static void unslice(const bs_reg_t state_bs[CRYPTO_IN_SIZE_BIT], uint8_t pt[CRYPTO_IN_SIZE * BITSLICE_WIDTH])
 {
-	uint32_t one=1;
+	uint32_t one=1;				//Binary: 1 at bit position 0 and 0 for all other bits
     uint32_t temp[8];
     int bitPosition = 0, result_index=0;
+	/**
+	 * k = bit position at each index of state
+	 * i = ith block of 8 states each. (ie; 64/8 = 8)
+	 * j = jth element in each block
+	 * So, element position in state_bs array = (i*8) + j
+	**/
     for(int k=0;k<32;++k){
         for (int i = 0; i < 8; i++) {
             pt[result_index+i];
@@ -89,6 +95,7 @@ void sBoxLayer(bs_reg_t *state_bs, bs_reg_t *sbox_result) {
  * @param key Input: Key to perform Add Round Key
  */
 void addRoundKey(const uint8_t *key, bs_reg_t *state_bs) {
+	//Unrolled loop
 	state_bs[0] ^= onesMask & (-(key[0] >> 0 & 0x1));
 	state_bs[1] ^= onesMask & (-(key[0] >> 1 & 0x1));
 	state_bs[2] ^= onesMask & (-(key[0] >> 2 & 0x1));
@@ -161,6 +168,7 @@ void addRoundKey(const uint8_t *key, bs_reg_t *state_bs) {
  * @param state_bs Output : Bitsliced Plain Text after PLayer
  */
 void pLayer(bs_reg_t *bb, bs_reg_t *state_bs) {
+	// Unrolled loop
 	  state_bs[ 0] = bb[ 0],  state_bs[ 1] = bb[ 4],  state_bs[ 2] = bb[ 8],  state_bs[ 3] = bb[12];
 	  state_bs[ 4] = bb[16],  state_bs[ 5] = bb[20],  state_bs[ 6] = bb[24],  state_bs[ 7] = bb[28];
 	  state_bs[ 8] = bb[32],  state_bs[ 9] = bb[36],  state_bs[10] = bb[40],  state_bs[11] = bb[44];
@@ -231,15 +239,9 @@ void crypto_func(uint8_t pt[CRYPTO_IN_SIZE * BITSLICE_WIDTH], uint8_t key[CRYPTO
 	bs_reg_t bb[CRYPTO_IN_SIZE_BIT] = {0};
 	uint8_t round = 31;
 	
-	// for (int i = 0; i < CRYPTO_IN_SIZE_BIT; i++)
-	// {
-	// 	state[i] = 0;
-	// 	bb[i] = 0;
-	// }
-	// Bring into bitslicing form
-	enslice(pt, state_bs);
-	
 	// INSERT PRESENT MAIN CODE HERE AND DELETE THIS COMMENT //
+	enslice(pt, state_bs);
+
 	for(uint8_t i = 1; i <= round; i++)
 	{
 		addRoundKey(key + 2, state_bs);
@@ -249,9 +251,8 @@ void crypto_func(uint8_t pt[CRYPTO_IN_SIZE * BITSLICE_WIDTH], uint8_t key[CRYPTO
 	}
 
 	addRoundKey(key + 2, state_bs);	
+
 	// Convert back to normal form
-
 	memset(pt, 0, CRYPTO_IN_SIZE * BITSLICE_WIDTH);
-
 	unslice(state_bs, pt);
 }
