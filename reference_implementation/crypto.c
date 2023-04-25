@@ -43,6 +43,12 @@ static const uint8_t sbox[16] = {
 	0xC, 0x5, 0x6, 0xB, 0x9, 0x0, 0xA, 0xD, 0x3, 0xE, 0xF, 0x8, 0x4, 0x7, 0x1, 0x2,
 };
 
+//pLayer positions for every bit according to the formula - (i/4) + (i%4) * 16
+static const uint8_t pLayer[] = {0, 16, 32, 48, 1, 17, 33, 49, 2, 18, 34, 50, 3, 19, 35, 51,
+                    4, 20, 36, 52, 5, 21, 37, 53, 6, 22, 38, 54, 7, 23, 39, 55,
+                    8, 24, 40, 56, 9, 25, 41, 57, 10, 26, 42, 58, 11, 27, 43, 59,
+                    12, 28, 44, 60, 13, 29, 45, 61, 14, 30, 46, 62, 15, 31, 47, 63};
+
 /**
  * Perform S-Box Layer in Present Algorithm
  * @param s Input: Plain text to perform sbox
@@ -51,10 +57,9 @@ static void sbox_layer(uint8_t s[CRYPTO_IN_SIZE])
 {
 	// perform substitution on the state
 	for (int i = 0; i < CRYPTO_IN_SIZE; i++) {
- 		s[i] = sbox[s[i] >> 4] << 4 | sbox[s[i] & 0x0F];
-		// uint8_t ln = s[i] & 0xF;
-		// uint8_t un = (s[i] >> 4) & 0xF;
-		// s[i] = sbox[ln] | (sbox[un] << 4);
+		uint8_t ln = s[i] & 0xF;
+		uint8_t un = (s[i] >> 4) & 0xF;
+		s[i] = sbox[ln] | (sbox[un] << 4);
 	}
 }
 
@@ -70,11 +75,13 @@ static void pbox_layer(uint8_t s[CRYPTO_IN_SIZE])
 		t[i] = s[i];
 	}
 	
+	uint8_t new_position_of_the_bit = 0, bit_to_be_copied = 0;
+	int old_byte_block = 0;
 	for (int i = 0; i < CRYPTO_SIZE_IN_BITS; i++)
 	{
-		int old_byte_block = i/8;
-		uint8_t bit_to_be_copied = getbit(t[old_byte_block], i%8);
-		int new_position_of_the_bit = (i/4) + (i%4) * 16;
+		old_byte_block = i/8;
+		bit_to_be_copied = getbit(t[old_byte_block], i%8);
+		new_position_of_the_bit = pLayer[i];	//precomputed the new position instead of computing it
 		cpybitArr(s, new_position_of_the_bit, bit_to_be_copied);
 	}
 }
