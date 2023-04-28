@@ -123,6 +123,7 @@ void crypto_func(uint8_t pt[CRYPTO_IN_SIZE], uint8_t key[CRYPTO_KEY_SIZE])
 {
 	uint8_t i = 0;
 	
+	// Steps for reference Implementation
 	for(i = 1; i <= 31; i++)
 	{
 		add_round_key(pt, key + 2);
